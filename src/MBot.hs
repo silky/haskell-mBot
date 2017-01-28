@@ -58,6 +58,7 @@ module MBot (openMBot,
              readUltraSonic,
              readLineFollower,
              goAhead,
+             goBackwards,
              goLeft,
              goRight,
              stop,
@@ -336,24 +337,32 @@ readLineFollower d = convertToReading <$> readSensor d getLineFollower  lineIdx
 -- Example code to show how the motor commands work
 
 {-|
-   Start both motors so that the robot moves forward
+   Start both motors so that the robot moves fowards
 -}
 goAhead d = do  sendCommand d $ setMotor rightMotor speed  stops
-                 -- Sending negative speed (for left motor) use complement !
                 sendCommand d $ setMotor leftMotor   (complement speed)  (complement stops)
 
-{-|
-  Start the motors let the mBot turn right
--}
-goRight d  = do   sendCommand d $ setMotor leftMotor  (complement stops) (complement stops)
-                  sendCommand d $ setMotor rightMotor speed stops
+
 
 {-|
-  Start the motors so that the robots turns left 
+   Start both motors so that the robot moves backwards
 -}
-goLeft d = do  sendCommand d $ setMotor rightMotor  stops  stops
-               -- Sending negative speed (for left motor) use complement !
-               sendCommand d $ setMotor leftMotor  (complement speed)  (complement stops)
+goBackwards d = do  sendCommand d $ setMotor rightMotor (complement speed) (complement stops)
+                    sendCommand d $ setMotor leftMotor  speed stops 
+
+
+
+{-|
+  Start the motors let the mBot turn left
+-}
+goLeft d  = do   sendCommand d $ setMotor leftMotor  stops stops
+                 sendCommand d $ setMotor rightMotor speed stops 
+
+{-|
+  Start the motors so that the robots turns right 
+-}
+goRight d = do  sendCommand d $ setMotor rightMotor  stops               stops
+                sendCommand d $ setMotor leftMotor   (complement speed)  (complement stops) 
 
 {-| 
    Stop both motors
