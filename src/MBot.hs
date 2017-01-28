@@ -63,6 +63,7 @@ module MBot (openMBot,
              goRight,
              stop,
              setRGB,
+             setMotor,
              Line(LEFTB, RIGHTB, BOTHB, BOTHW),
              Command() ) where 
 
@@ -320,7 +321,7 @@ sendCommand device (MBotCommand idx act dev port args) =
 setRGB  index red green blue = MBotCommand idx RUN  RGBLED rgbp  [2,index,red,green,blue]
 
 
-setMotor port speed sp       = MBotCommand idx RUN  MOTOR  port  [speed,sp]
+setMotor port speed sp       = MBotCommand  idx RUN  MOTOR  port  [speed,sp]
 getLineFollower              = MBotCommand  lineIdx   GET LINEFOLLOWER      linp  []
 getUltrasonicSensor          = MBotCommand  ultraIdx  GET ULTRASONIC_SENSOR sonp  []
 
