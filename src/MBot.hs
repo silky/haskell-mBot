@@ -9,13 +9,13 @@
 --  April 2016
 ------------------------------------------------
 -- This is a library to control the mBot robot
--- with haskell.
+-- with Haskell.
 -- This will only work when you connect the
--- robot with the default firmware over 2.4ghz
--- the Bluetooth version is not supported !
+-- robot with the default firmware over 2.4GHz
+-- the Bluetooth version is not supported!
 --
 -- If you find an error, improve the library
--- or just want to ask me questions
+-- or just want to ask me questions,
 -- please contact me at
 -- Christophe.Scholliers@UGent.be
 ------------------------------------------------
@@ -28,25 +28,27 @@
 
 = Programming the mBot
 
-With this library it is possible to control the mBot robot from within Haskell over 2.4ghz wireless.
-The mBot itself needs to contain the standard firmware otherwise the library will not behave as expected. 
-There is support for steering the motors and leds and for reading the linesensor and the ultrasonic sensor.
-An small example program is shown below, for more information about the individual functions take a look at the api documentation below.
+With this library it is possible to control the mBot robot from within Haskell over 2.4GHz wireless.
+The programs do not run on the robot itself, the library just helps to communicate with the robot.
+
+The mBot itself needs to contain the standard firmware otherwise the library will not behave as expected.
+There is support for steering the motors and LEDS and for reading the line sensor and the ultrasonic sensor.
+A small example program is shown here, for more information about the individual functions take a look at the API documentation below.
 
 @
 import MBot
 
-main =  do
-  putStrLn "My first mBot program in Haskell !"
+main = do
+  putStrLn "My first mBot program in Haskell!"
   -- Open the connection with the mMbot
   d <- openMBot
   putStrLn "Opened a connection with the mBot"
-  -- Turn on led 1 of the mBot and set the RGB value to (0,100,0)
+  -- Turn on LED 1 of the mBot and set the RGB value to (0,100,0)
   sendCommand d $ setRGB 1 0 100 0
-  putStrLn "Look at all the pretty colors !"
-  -- Turn on led 2 of the mBot and set the RGB value to (100,0,0)
+  putStrLn "Look at all the pretty colors!"
+  -- Turn on LED 2 of the mBot and set the RGB value to (100,0,0)
   sendCommand d $ setRGB 2 100 0 0
-  -- close the connection with the mBot 
+  -- Close the connection with the mBot
   closeMBot d
 @
 -}
@@ -65,7 +67,7 @@ module MBot (openMBot,
              setRGB,
              setMotor,
              Line(LEFTB, RIGHTB, BOTHB, BOTHW),
-             Command() ) where 
+             Command() ) where
 
 import Control.Monad.Trans
 import Control.Concurrent
@@ -76,6 +78,10 @@ import GHC.Word
 import Data.Maybe
 import Data.Bits
 import Unsafe.Coerce
+-- Protocol description at http://learn.makeblock.com/en/makeblock-orion-protocol/
+-- archived link in case the link dies:
+-- https://web.archive.org/web/20170126131635/http://learn.makeblock.com/en/makeblock-orion-protocol/
+--
 -- The mBot protocol works by sending commands in
 -- in the following format:
 ----------------------------------------------------
@@ -84,29 +90,28 @@ import Unsafe.Coerce
 ----------------------------------------------------
 
 -- The header is always sent followed by
--- len: the length of the remaining data, without the header.
+-- len:    the length of the remaining data, without the header.
 
--- idx: i have no clue what the idx is and in the mbot code
--- it is mostly ignored from what I have seen.
+-- idx:    an identifier that can be chosen. The robot will use it in the reply
+--         to a sensor query. It is ignored in this module, a value of 0 is
+--         always used.
 
--- action: can be either GET,RUN,RESET, START
--- GET is used to retrieve data from the mbot
--- RUN is used to make the robot take some action
--- it seems that RESET and START are ignored
+-- action: can be either one of GET,RUN,RESET,START
+--         GET is used to retrieve data from the mbot.
+--         RUN is used to make the robot take some action.
+--         It seems that RESET and START are ignored.
 
--- device: All the components attached to the
--- core mbot are called devices.
+-- device: all the components attached to the core mbot are called devices.
 
--- port: the mbot has several ports to connect the devices to
+-- port:   the mBot has several ports to connect the devices to.
 
--- data: some command take a number of arguments
--- these arguments are contained in the data section
+-- data:   some command take a number of arguments. These arguments are
+--         contained in the data section
 
 
--- We represent the devices by an algebraic data type.
--- Because somebody decided it was a good idea to make these
--- enumeration of devices  count up till 22 and then decided
--- to jump to 31 we can't use deriving enum ...
+-- We represent the devices by an algebraic data type. Because somebody decided
+-- it was a good idea to make these enumeration of devices count up to 22 and
+-- then jump to 31 we can't use deriving enum...
 data Dev     = VERSION | ULTRASONIC_SENSOR | TEMPERATURE_SENSOR  | LIGHT_SENSOR |
                POTENTIONMETER | JOYSTICK | GYRO | SOUND_SENSOR | RGBLED | SEVSEG  |
                MOTOR | SERVO | ENCODER  | IR | IRREMOTE | PIRMOTION | INFRARED  |
@@ -114,26 +119,25 @@ data Dev     = VERSION | ULTRASONIC_SENSOR | TEMPERATURE_SENSOR  | LIGHT_SENSOR 
                ANALOG  | PWM | SERVO_PIN | TONE |BUTTON_INNER | LEDMATRIX | TIMER  deriving(Eq)
 
 {-|
-
-The line sensor consists of two sensors which are able to detect either a black or a white surface.
-Therefore there are four different states to represent the state of the line sensor 
-
+The line sensor consists of two sensors which are able to detect either a black
+or a white surface. Therefore there are four different states to represent the
+state of the line sensor.
 -}
-data Line = LEFTB  -- ^ Left sensor  reads black right sensor reads white 
-          | RIGHTB -- ^ Right sensor reads black left sensor reads white 
-          | BOTHB  -- ^ Both the left and right sensor observe a black surface
-          | BOTHW  -- ^ Both the left and right sensor observe a white surface
-          deriving(Show,Eq)
+data Line    = LEFTB  -- ^ Left sensor reads black, right sensor reads white
+             | RIGHTB -- ^ Right sensor reads black, left sensor reads white
+             | BOTHB  -- ^ Both the left and right sensor read black
+             | BOTHW  -- ^ Both the left and right sensor read white
+             deriving(Show,Eq)
 
 {-|
    Type of mBot commands the constructor is not exported.
 -}
---               idx  action device port data
-data Command = MBotCommand Int  Action Dev    Int [Int]
+--                         idx  action device port data
+data Command = MBotCommand Int  Action Dev    Int  [Int]
 
--- actions, NOTHING not really exits but otherwise the numbers
--- don't match the ones of mBot
-data Action = NOTHING | GET | RUN | RESET | START deriving (Enum)
+-- actions, NOTHING doesn't really exist but otherwise the numbers don't match
+-- the ones of mBot
+data Action  = NOTHING | GET | RUN | RESET | START deriving (Enum)
 
 -- constant definition for the header of a command
 header = [0xff,0x55]
@@ -147,7 +151,7 @@ ultraIdx     = 42
 -- ID for the dongle
 dongleID     = 1046
 deviceID     = 65535
--- ID's for the left and right motor
+-- IDs for the left and right motor
 leftMotor    = 0x9
 rightMotor   = 0xa
 -- length of an OK message
@@ -158,15 +162,14 @@ maxRetries   = 15
 -- defaults for motor speed
 speed        = 60
 stops        = 0
--- port of the rbg led
+-- port of the RBG LED
 rgbp         = 7
 linp         = 2
 sonp         = 3
 
 -- Functionality codes
--- These codes are invented by
--- mBot and can't be touched unfortunately.
--- for more info see https://github.com/Makeblock-official/mBot/blob/master/mBot-default-program/mBot-default-program.ino
+-- These codes are invented by mBot and can't be touched unfortunately.
+-- For more info, see https://github.com/Makeblock-official/mBot/blob/master/mBot-default-program/mBot-default-program.ino
 devEnumTable = [
  (VERSION             , 0),
  (ULTRASONIC_SENSOR   , 1),
@@ -212,31 +215,30 @@ intToWord8 i = fromIntegral i :: Word8
 intToWord8m  = map intToWord8
 word8ToInteger i = fromIntegral i :: Integer
 
--- Write a raw word8 array to the HID
--- the interface expects that the head of the
--- array is also it's length minus 1
+-- Write a raw Word8 array to the HID.
+-- The interface expects that the head of the bytestring is also its length
+-- minus 1, because ByteStrings don't expose their length.
 writeRaw device array = HID.write device $ BS.pack $ intToWord8 (length array) : array
 
--- Throw away the length information in the return
--- array
+-- Throw away the length information in the return array
 cutlength (x:rest) = flip take rest $ fromIntegral x
 
 -- Unpack and transform to an int
 firstInt = fromIntegral . head . BS.unpack
 
--- Read a fixed amount of data from the
--- connection, with a maximum number of tries.
--- There are a few reasons why this code is so ugly
--- 1) there is no synchronous timeout call in the library hdapi
--- 2) the library does not return the actually read bytes
---    therefore we just need to test and see whether the sent bytes are 0
---    this again give a major problem because the bytes might actually be 0
---    in practice I have not encountered the problem though.
--- 3) reading too fast from the library makes it crash
---    this is really annoying and that's why there is a timeout
---    this probably depends on the hardware so this timeout
---    might be too small or too big depending on the operating system
--- TODO I think it would be best to adjust the hdapi library
+-- Read a fixed amount of data from the connection, with a maximum number of
+-- tries.
+-- There are a few reasons why this code is so ugly:
+-- 1) There is no synchronous timeout call in the library hidapi
+-- 2) The library does not return the actually read bytes, therefore we just
+--    need to test and see whether the sent bytes are 0. This again give a
+--    major problem because the bytes might effectively be 0. In practice, I
+--    have not encountered the problem though.
+-- 3) Reading too fast from the library makes it crash. This is really annoying
+--    and that's why there is a timeout. This probably depends on the hardware
+--    so this timeout might be too small or too big depending on the operating
+--    system.
+-- TODO I think it would be best to adjust the hidapi library.
 readLength _ _ 0   = return []
 readLength d 0 max = return []
 readLength d x m = do
@@ -250,8 +252,8 @@ readLength d x m = do
                 else
                    readLength d x (m-1)
 
--- Too many constants !
--- maybe  I should change this to a form of enum or something
+-- Too many constants!
+-- TODO Maybe I should change this to a form of enum or something
 convertToReading r  |  (r!!6) == 128                   =  LEFTB
                     | ((r!!6) == 0) && ((r!!7) == 64)  =  RIGHTB
                     | ((r!!6) == 0) && ((r!!7) == 0)   =  BOTHB
@@ -284,26 +286,26 @@ ultra  = unsafeCoerce . shiftMap 0 . take 4 . drop 4
 --------------------------------------------------------------------------------------------
 
 {-|
-   Opens a connection with the mBot 
+   Open a connection with the mBot
 -}
-openMBot :: (IO Device) -- ^ gives back the connection with the mBot 
+openMBot :: (IO Device) -- ^ gives back the connection with the mBot
 openMBot = withHIDAPI $ do
              HID.init
              d <- HID.open dongleID deviceID Nothing
              return d
 
-{- |
- Close the connection with the mBot
+{-|
+   Close the connection with the mBot
 -}
 closeMBot d = withHIDAPI $ HID.close d
 
 {-|
- Sends a mBot command over the HID device
+   Send a mBot command over the HID device
 -}
--- Note that we have to send the length information twice !
--- Once for the hidapi (7+ length args) and once for the mbot (4 + length args)
--- Strangely enough the hidapi for mac doesn't need the length information
--- even more strange is that it also works with this information ...
+-- Note that we have to send the length information twice!
+-- Once for the hidapi (7+ length args) and once for the mBot (4 + length args)
+-- Strangely enough the hidapi for macOS doesn't need the length information.
+-- Even more strange is that it also works with this information...
 sendCommand :: Device   -- ^ An open 'Device' connection
             -> Command  -- ^ The command to send
             -> IO ()    -- ^ There is no return value
@@ -315,8 +317,8 @@ sendCommand device (MBotCommand idx act dev port args) =
        clearBuffer device act
        return ()
 
-{-| 
-  Create an mBot command to turn on the led on a particular rgb value 
+{-|
+   Create an mBot command to turn on the LED on a particular RGB value
 -}
 setRGB  index red green blue = MBotCommand idx RUN  RGBLED rgbp  [2,index,red,green,blue]
 
@@ -327,15 +329,15 @@ getUltrasonicSensor          = MBotCommand  ultraIdx  GET ULTRASONIC_SENSOR sonp
 
 
 {-|
-   Read out the status of the ultrasonic line follower 
+   Read out the status of the ultrasonic line follower
 -}
 readUltraSonic   d = ultra <$> readSensor d getUltrasonicSensor ultraIdx
 {-|
-   Read out the status of line follower sensor 
+   Read out the status of line follower sensor
 -}
 readLineFollower d = convertToReading <$> readSensor d getLineFollower  lineIdx
 
--- Example code to show how the motor commands work
+-- Shortcuts for simple movements
 
 {-|
    Start both motors so that the robot moves fowards
@@ -343,30 +345,27 @@ readLineFollower d = convertToReading <$> readSensor d getLineFollower  lineIdx
 goAhead d = do  sendCommand d $ setMotor rightMotor speed  stops
                 sendCommand d $ setMotor leftMotor   (complement speed)  (complement stops)
 
-
-
 {-|
    Start both motors so that the robot moves backwards
 -}
 goBackwards d = do  sendCommand d $ setMotor rightMotor (complement speed) (complement stops)
-                    sendCommand d $ setMotor leftMotor  speed stops 
-
-
+                    sendCommand d $ setMotor leftMotor  speed stops
 
 {-|
-  Start the motors let the mBot turn left
+   Start one motor so that the robot turns left
 -}
 goLeft d  = do   sendCommand d $ setMotor leftMotor  stops stops
-                 sendCommand d $ setMotor rightMotor speed stops 
+                 sendCommand d $ setMotor rightMotor speed stops
 
 {-|
-  Start the motors so that the robots turns right 
+   Start one motor so that the robots turns right
 -}
 goRight d = do  sendCommand d $ setMotor rightMotor  stops               stops
-                sendCommand d $ setMotor leftMotor   (complement speed)  (complement stops) 
+                sendCommand d $ setMotor leftMotor   (complement speed)  (complement stops)
 
-{-| 
+{-|
    Stop both motors
 -}
 stop d   = do   sendCommand d $ setMotor rightMotor  stops stops
                 sendCommand d $ setMotor leftMotor   stops stops
+
