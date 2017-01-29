@@ -1,5 +1,9 @@
 # Revision history for MBot
 
+## 0.2.0.0 -- YYYY-mm-dd
+
+* Clean up comments
+
 ## 0.1.1.0 2016-12-19
 
 * Export setMotor command
